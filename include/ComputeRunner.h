@@ -10,4 +10,5 @@ public:
 	ComputeDevice();
 	bool Initialize();
 	ID3D11ComputeShader* CreateComputeShader(std::string shaderFile, std::string shaderEntryPoint);
+	void Shutdown();
 };

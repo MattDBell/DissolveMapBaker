@@ -87,3 +87,8 @@ ID3D11ComputeShader* ComputeDevice::CreateComputeShader(string shaderFile, strin
 
 	return shader;
 }
+
+void ComputeDevice::Shutdown()
+{
+	device->Release();
+}

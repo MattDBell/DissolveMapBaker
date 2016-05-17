@@ -9,9 +9,7 @@
 using std::string;
 using std::vector;
 
-
 extern ID3D11Device* device;
-extern ID3D11DeviceContext* deviceContext;
 
 int stringCompare(const void* lhs, const void* rhs)
 {
@@ -70,16 +68,21 @@ IWICBitmapSource* ReadPNG(IWICImagingFactory* factory, string file)
 
 bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 {
+	// Initialize actual shader and device/context
 	ComputeDevice computeRunner;
 	computeRunner.Initialize();
 	ID3D11ComputeShader* shader = computeRunner.CreateComputeShader("resources/dissolveMapBaker.hlsl", "CSMain");
 
+	// Fine all png files in folder
+	// TODO: Other File formats?  No reason not to
 	string search (folderName);
 	search.append("\\*.png");
+
 	vector<string> allFiles;
 	allFiles.reserve(1024);
 	GatherFolderInformation(search, allFiles);
 
+	// Initialize WIC
 	CoInitialize(NULL);
 	IWICImagingFactory* pFactory = nullptr;
 
@@ -92,16 +95,20 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 	std::vector<IWICBitmapSource*> frames;
 	frames.reserve(allFiles.size());
 
-	for (int idx = 0; idx < allFiles.size(); ++idx)
+	// Load all found image files into correct format
+	for (size_t idx = 0; idx < allFiles.size(); ++idx)
 	{
 		string file(folderName);
 		IWICBitmapSource* frame = ReadPNG(pFactory, file.append("\\").append(allFiles[idx]));
 		frames.push_back(frame);
 	}
 
+	// Assume all frames are same size
+	// TODO: error and abandon if not
 	UINT height, width;
 	frames[0]->GetSize(&width, &height);
 
+	// Create all texture descriptions
 	D3D11_TEXTURE2D_DESC desc;
 	desc.ArraySize = allFiles.size();
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
@@ -140,12 +147,13 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 	stagingDesc.Usage = D3D11_USAGE_STAGING;
 	stagingDesc.Width = outputDesc.Width;
 	
+	// Create the texture2D array by copying from the frames created above
 	D3D11_SUBRESOURCE_DATA* initialData = new D3D11_SUBRESOURCE_DATA[frames.size()];
 
 	char* textureData = new char[height * width * frames.size()];
 	memset(textureData, 0, height * width * frames.size());
 	
-	for (int idx = 0; idx < frames.size(); ++idx)
+	for (size_t idx = 0; idx < frames.size(); ++idx)
 	{
 		WICPixelFormatGUID pFGUID;
 		frames[idx]->GetPixelFormat(&pFGUID);
@@ -156,13 +164,14 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 			);
 	}
 
-	for (int idx = 0; idx < frames.size(); ++idx)
+	for (size_t idx = 0; idx < frames.size(); ++idx)
 	{
 		initialData[idx].pSysMem = (void*)(textureData + ( width * height * idx));
 		initialData[idx].SysMemPitch = width;
 		initialData[idx].SysMemSlicePitch = width * height;
 	}
 
+	// Declare and actually create Texture2D and Views
 	ID3D11Texture2D *pTexArray;
 	ID3D11Texture2D *pTexOutput;
 	ID3D11Texture2D *pTexStaging;
@@ -200,6 +209,7 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 		&pTexOutputView
 		);
 
+	// Set state then dispatch compute shader
 	ID3D11DeviceContext *immediate;
 	device->GetImmediateContext(&immediate);
 
@@ -210,18 +220,20 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 	immediate->Dispatch(width, height, 1);
 	immediate->CSSetShader(nullptr, nullptr, 0);
 
+	// Have to copy from our output to our staging then we map the staging
 	immediate->CopyResource(pTexStaging, pTexOutput);
 	D3D11_MAPPED_SUBRESOURCE mapped;
 	result = immediate->Map(pTexStaging, 0, D3D11_MAP_READ, 0, &mapped);
 
+	// Create the Bitmap, copy data to it then save it out
 	IWICBitmap* toPNG;
 	WICRect all{ 0, 0, stagingDesc.Width, stagingDesc.Height };
 	IWICBitmapLock* lock;
 	pFactory->CreateBitmap(stagingDesc.Width, stagingDesc.Height,
 		GUID_WICPixelFormat8bppGray, WICBitmapCacheOnLoad, &toPNG);
 
+	// Lock to write
 	result = toPNG->Lock(&all, WICBitmapLockWrite, &lock);
-
 
 	UINT size;
 	WICInProcPointer* data = new WICInProcPointer;
@@ -229,27 +241,19 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 	lock->GetDataPointer(&size, data);
 	bool foundNonZero = false;
 
-	for (int ydx = 0; ydx < mapped.DepthPitch; ++ydx)
-	{
-		BYTE b = ((BYTE*)mapped.pData)[ydx];
-		if (b != 0 && !foundNonZero)
-		{
-			foundNonZero = false;
-		}
-	}
-	
-	for (int idx = 0; idx < mapped.DepthPitch; ++idx)
+	for (size_t idx = 0; idx < mapped.DepthPitch; ++idx)
 	{
 		BYTE b = ((BYTE*)mapped.pData)[idx];
 		(*data)[idx] = b;
 	}
 
+	// Done writing
 	lock->Release();
 
+	// BoilerPlate to save out
 	IWICBitmapEncoder* encoder;
 	GUID containerFormat = GUID_ContainerFormatPng;
 	pFactory->CreateEncoder(containerFormat, nullptr, &encoder);
-
 
 	IWICStream* stream;
 	pFactory->CreateStream(&stream);
@@ -267,6 +271,20 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 	frameEncode->Commit();
 	encoder->Commit();
 
+	// Cleanup
+	frameEncode->Release();
+	encoder->Release();
+	stream->Release();
+	toPNG->Release();
+
+	for (size_t idx = 0; idx < frames.size(); ++idx)
+	{
+		frames[idx]->Release();
+	}
+
+	pFactory->Release();
 	CoUninitialize(); 
+	shader->Release();
+	computeRunner.Shutdown();
 	return true;
 } 
