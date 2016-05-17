@@ -4,12 +4,7 @@
 
 using std::string;
 
-int CALLBACK WinMain(
-	_In_ HINSTANCE hInstance,
-	_In_ HINSTANCE hPrevInstance,
-	_In_ LPSTR lpCmdLine,
-	_In_ int nCmdShow
-	)
+int main()
 {
 	int argc = __argc;
 	char** argv = __argv;
@@ -17,6 +12,7 @@ int CALLBACK WinMain(
 	if (argc != 3)
 	{
 		// Output instructions
+		printf("Usage: DissolveMapBakerCLI.exe <path> <output file>");
 		return 0;
 	}
 

@@ -43,7 +43,7 @@ if (MAKE_CLI)
 		"${PROJECT_SOURCE_DIR}/CLI/include"
 	)	
 
-	add_executable(DissolveMapBakerCLI WIN32 ${CLI_SRCS} ${CLI_HDRS})
+	add_executable(DissolveMapBakerCLI ${CLI_SRCS} ${CLI_HDRS})
 	target_link_libraries(DissolveMapBakerCLI DissolveMapBaker)
 
 endif(MAKE_CLI)
