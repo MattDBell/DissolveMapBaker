@@ -82,7 +82,7 @@ ID3D11ComputeShader* ComputeDevice::CreateComputeShader(string shaderFile, strin
 
 	if (FAILED(result))
 	{
-			OutputDebugString("Failed to compile compute shader");
+		OutputDebugString("Failed to compile compute shader");
 	}
 
 	return shader;
