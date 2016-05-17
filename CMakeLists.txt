@@ -24,8 +24,8 @@ include_directories(
 add_library(DissolveMapBaker ${DMB_SRCS} ${DMB_HDRS} ${DMB_RSRC})
 
 add_custom_target(COPY_SHADER
-	COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/resources ${CMAKE_CURRENT_BINARY_DIR}/resources
-	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/resources/dissolveMapBaker.hlsl ${CMAKE_CURRENT_BINARY_DIR}/resources/
+	COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/resources ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/resources
+	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/resources/dissolveMapBaker.hlsl ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/resources/
 	)
 
 add_dependencies(DissolveMapBaker COPY_SHADER)	

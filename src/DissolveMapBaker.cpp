@@ -32,8 +32,10 @@ void GatherFolderInformation(string folderName, vector<string>& allFiles)
 		} while (foundFile);
 	}
 
-	std::qsort(&allFiles[0], allFiles.size(), sizeof(string), stringCompare);
-
+	if (allFiles.size() > 0)
+	{
+		std::qsort(&allFiles[0], allFiles.size(), sizeof(string), stringCompare);
+	}
 }
 
 IWICBitmapSource* ReadPNG(IWICImagingFactory* factory, string file)
@@ -71,16 +73,27 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 	// Initialize actual shader and device/context
 	ComputeDevice computeRunner;
 	computeRunner.Initialize();
-	ID3D11ComputeShader* shader = computeRunner.CreateComputeShader("resources/dissolveMapBaker.hlsl", "CSMain");
+	string exeLocation = string(__argv[0]);
+	size_t lastSeparator = exeLocation.find_last_of("\\/");
+	// Shader should be relative to where the exe is
+	string shaderLocation = exeLocation.substr(0, lastSeparator);
+	shaderLocation.append("\\resources\\dissolveMapBaker.hlsl");
+	ID3D11ComputeShader* shader = computeRunner.CreateComputeShader(shaderLocation.c_str(), "CSMain");
 
 	// Fine all png files in folder
 	// TODO: Other File formats?  No reason not to
-	string search (folderName);
+	string search(folderName);
 	search.append("\\*.png");
 
 	vector<string> allFiles;
 	allFiles.reserve(1024);
 	GatherFolderInformation(search, allFiles);
+	if (allFiles.size() == 0)
+	{
+		shader->Release();
+		computeRunner.Shutdown();
+		return false;
+	}
 
 	// Initialize WIC
 	CoInitialize(NULL);
@@ -255,9 +268,11 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 	GUID containerFormat = GUID_ContainerFormatPng;
 	pFactory->CreateEncoder(containerFormat, nullptr, &encoder);
 
+	std::wstring outputFileW = std::wstring(outputFile.begin(), outputFile.end());
+
 	IWICStream* stream;
 	pFactory->CreateStream(&stream);
-	stream->InitializeFromFilename(L"Test.png", GENERIC_WRITE);
+	stream->InitializeFromFilename(outputFileW.c_str(), GENERIC_WRITE);
 	encoder->Initialize(stream, WICBitmapEncoderNoCache);
 
 	IWICBitmapFrameEncode* frameEncode;
