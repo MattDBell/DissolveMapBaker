@@ -4,12 +4,12 @@ project(DissolveMapBaker)
 option(MAKE_CLI "Make the CLI too" on)
 
 set( DMB_SRCS
-	src/ComputeRunner.cpp
+	src/ComputeDevice.cpp
 	src/DissolveMapBaker.cpp
 	)
 
 set (DMB_HDRS
-	include/ComputeRunner.h
+	include/ComputeDevice.h
 	include/DissolveMapBaker.h
 	)
 

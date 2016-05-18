@@ -1,4 +1,4 @@
-#include "ComputeRunner.h"
+#include "ComputeDevice.h"
 
 // direct3d 
 #include <d3d11.h>

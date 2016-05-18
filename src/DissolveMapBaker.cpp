@@ -1,5 +1,5 @@
 #include "DissolveMapBaker.h"
-#include "ComputeRunner.h"
+#include "ComputeDevice.h"
 
 #include <d3d11.h>
 #include <vector>
