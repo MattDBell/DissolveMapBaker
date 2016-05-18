@@ -12,9 +12,7 @@
 using std::string;
 
 // Global State
-ID3D11Device* device;
-ID3D11DeviceContext* deviceContext;
-D3D_FEATURE_LEVEL featureLevel;
+
 
 ComputeDevice::ComputeDevice()
 {
@@ -43,9 +41,9 @@ bool ComputeDevice::Initialize()
 		NULL, // Use default array
 		0,
 		D3D11_SDK_VERSION,
-		&device,
-		&featureLevel,
-		&deviceContext
+		&pDevice,
+		(D3D_FEATURE_LEVEL*)&featureLevel,
+		&pDeviceContext
 		);
 
 	return true;
@@ -55,7 +53,7 @@ ID3D11ComputeShader* ComputeDevice::CreateComputeShader(string shaderFile, strin
 {
 	UINT compilerFlags = D3DCOMPILE_ENABLE_STRICTNESS;
 
-	LPCSTR profile = featureLevel >= D3D_FEATURE_LEVEL_11_0 ? "cs_5_0" : "cs_4_0";
+	LPCSTR profile = ((D3D_FEATURE_LEVEL)featureLevel) >= D3D_FEATURE_LEVEL_11_0 ? "cs_5_0" : "cs_4_0";
 
 	ID3DBlob* shaderBlob = nullptr;
 	ID3DBlob* errorBlob = nullptr;
@@ -76,7 +74,7 @@ ID3D11ComputeShader* ComputeDevice::CreateComputeShader(string shaderFile, strin
 	}
 	ID3D11ComputeShader* shader = nullptr;
 
-	result = device->CreateComputeShader(shaderBlob->GetBufferPointer(),
+	result = pDevice->CreateComputeShader(shaderBlob->GetBufferPointer(),
 		shaderBlob->GetBufferSize(),
 		NULL, &shader);
 
@@ -90,5 +88,10 @@ ID3D11ComputeShader* ComputeDevice::CreateComputeShader(string shaderFile, strin
 
 void ComputeDevice::Shutdown()
 {
-	device->Release();
+	pDevice->Release();
+}
+
+ID3D11Device* ComputeDevice::GetDevice()
+{
+	return pDevice;
 }

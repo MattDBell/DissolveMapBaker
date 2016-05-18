@@ -9,7 +9,7 @@
 using std::string;
 using std::vector;
 
-extern ID3D11Device* device;
+//extern ID3D11Device* device;
 
 int stringCompare(const void* lhs, const void* rhs)
 {
@@ -194,8 +194,9 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 
 	ID3D11ShaderResourceView *pTexArrayResourceView;
 	ID3D11UnorderedAccessView *pTexOutputView;
+	ID3D11Device* pDevice = computeRunner.GetDevice();
 
-	result = device->CreateTexture2D(
+	result = pDevice->CreateTexture2D(
 		&desc,
 		pInitialData,
 		&pTexArray
@@ -204,25 +205,25 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 	delete[] pTextureData;
 	delete[] pInitialData;
 
-	result = device->CreateTexture2D(
+	result = pDevice->CreateTexture2D(
 		&outputDesc,
 		NULL,
 		&pTexOutput
 	);
 
-	result = device->CreateTexture2D(
+	result = pDevice->CreateTexture2D(
 		&stagingDesc,
 		NULL,
 		&pTexStaging
 	);
 
-	result = device->CreateShaderResourceView(
+	result = pDevice->CreateShaderResourceView(
 		pTexArray,
 		NULL,
 		&pTexArrayResourceView
 		);
 
-	result = device->CreateUnorderedAccessView(
+	result = pDevice->CreateUnorderedAccessView(
 		pTexOutput,
 		NULL,
 		&pTexOutputView
@@ -230,7 +231,7 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 
 	// Set state then dispatch compute shader
 	ID3D11DeviceContext *pImmediate;
-	device->GetImmediateContext(&pImmediate);
+	pDevice->GetImmediateContext(&pImmediate);
 
 	pImmediate->CSSetShader(pShader, nullptr, 0);
 	pImmediate->CSSetShaderResources(0, 1, &pTexArrayResourceView);
