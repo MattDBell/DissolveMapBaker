@@ -73,14 +73,35 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 {
 	// Initialize actual shader and device/context
 	ComputeDevice computeRunner;
-	computeRunner.Initialize();
+	if (!computeRunner.Initialize())
+	{
+		printf("Failed to create ComputeDevice\n");
+		return false;
+	}
+
 	string exeLocation = string(__argv[0]);
 	size_t lastSeparator = exeLocation.find_last_of("\\/");
+
+	if (lastSeparator == string::npos)
+	{
+		lastSeparator = 0;
+	}
+
 	// Shader should be relative to where the exe is
-	string shaderLocation = exeLocation.substr(0, lastSeparator);
-	shaderLocation.append("\\resources\\dissolveMapBaker.hlsl");
+	string shaderLocation = (lastSeparator != 0 ? exeLocation.substr(0, lastSeparator + 1) : string());
+	shaderLocation.append("resources\\dissolveMapBaker.hlsl");
+	printf("Creating Shader at %s\n", shaderLocation.c_str());
+
 	ID3D11ComputeShader* pShader = computeRunner.CreateComputeShader(shaderLocation.c_str(), "CSMain");
 
+	if (pShader == nullptr)
+	{
+		printf("Failed to compile shader %s\n", shaderLocation.c_str());
+	}
+	else
+	{
+		printf("Found shader at %s\n", shaderLocation.c_str());
+	}
 	// Fine all png files in folder
 	// TODO: Other File formats?  No reason not to
 	string search(folderName);
@@ -93,6 +114,7 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 	// Empty folder, tsk tsk
 	if (allFiles.size() == 0)
 	{
+		printf("No pngs found in folder %s\n", folderName.c_str());
 		pShader->Release();
 		computeRunner.Shutdown();
 		return false;
@@ -124,6 +146,8 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 	UINT height, width;
 	frames[0]->GetSize(&width, &height);
 
+	printf("Found %d images of width %d and height %d\n", frames.size(), width, height);
+
 	// Create all texture descriptions
 	D3D11_TEXTURE2D_DESC desc;
 	desc.ArraySize = allFiles.size();
@@ -140,7 +164,7 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 	D3D11_TEXTURE2D_DESC outputDesc(desc);
 	outputDesc.ArraySize = 1;
 	outputDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS;
-	outputDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+	outputDesc.CPUAccessFlags = 0;
 	outputDesc.Format = DXGI_FORMAT_R8_UINT;
 	outputDesc.Height = desc.Height;
 	outputDesc.MipLevels = 1;
@@ -202,6 +226,12 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 		&pTexArray
 	); 
 
+	if (FAILED(result))
+	{
+		printf("Failed to create texture array%x\n", result);
+		return false;
+	}
+
 	delete[] pTextureData;
 	delete[] pInitialData;
 
@@ -211,23 +241,47 @@ bool DissolveMapBaker::RunOnFolder(string folderName, string outputFile)
 		&pTexOutput
 	);
 
+	if (FAILED(result))
+	{
+		printf("Failed to create output texture %x\n", result);
+		return false;
+	}
+
 	result = pDevice->CreateTexture2D(
 		&stagingDesc,
 		NULL,
 		&pTexStaging
 	);
 
+	if (FAILED(result))
+	{
+		printf("Failed to create staging texture %x\n", result);
+		return false;
+	}
+ 
 	result = pDevice->CreateShaderResourceView(
 		pTexArray,
 		NULL,
 		&pTexArrayResourceView
 		);
 
+	if (FAILED(result))
+	{
+		printf("Failed to create Resource View for tex array %x\n", result);
+		return false;
+	}
+
 	result = pDevice->CreateUnorderedAccessView(
 		pTexOutput,
 		NULL,
 		&pTexOutputView
 		);
+
+	if (FAILED(result))
+	{
+		printf("Failed to create Resource View for output tex %x\n", result); 
+		return false;
+	}
 
 	// Set state then dispatch compute shader
 	ID3D11DeviceContext *pImmediate;

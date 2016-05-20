@@ -26,25 +26,46 @@ bool ComputeDevice::Initialize()
 	UINT d3dDeviceFlags = D3D11_CREATE_DEVICE_SINGLETHREADED |
 		D3D11_CREATE_DEVICE_DISABLE_GPU_TIMEOUT;
 
-	IDXGIFactory* factory;
+	IDXGIFactory* factory = nullptr;
 
 	result = CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)&factory);
 
+	if (FAILED(result))
+	{
+		printf("Failed to create dx factory");
+		return false;
+	}
+
 	IDXGIAdapter* adapter;
 	result = factory->EnumAdapters(0, &adapter);
+
+	if (FAILED(result))
+	{
+		printf("Failed to enumerate Adapters");
+		return false;
+	}
+
+	D3D_FEATURE_LEVEL d11 = D3D_FEATURE_LEVEL_11_0;
+
 
 	result = D3D11CreateDevice(
 		NULL,
 		D3D_DRIVER_TYPE_HARDWARE,
 		NULL,
 		d3dDeviceFlags,
-		NULL, // Use default array
-		0,
+		&d11, // Use default array
+		1,
 		D3D11_SDK_VERSION,
 		&pDevice,
 		(D3D_FEATURE_LEVEL*)&featureLevel,
 		&pDeviceContext
 		);
+
+	if (FAILED(result))
+	{
+		printf("Failed to create device");
+		return false;
+	}
 
 	return true;
 }
@@ -70,6 +91,11 @@ ID3D11ComputeShader* ComputeDevice::CreateComputeShader(string shaderFile, strin
 			OutputDebugString("Failed to compile shader file");
 			OutputDebugStringA((char*)errorBlob->GetBufferPointer());
 			errorBlob->Release();
+			if (shaderBlob != nullptr)
+			{
+				shaderBlob->Release();
+			}
+			return nullptr;
 		}
 	}
 	ID3D11ComputeShader* shader = nullptr;
@@ -82,6 +108,7 @@ ID3D11ComputeShader* ComputeDevice::CreateComputeShader(string shaderFile, strin
 	{
 		OutputDebugString("Failed to compile compute shader");
 	}
+	shaderBlob->Release();
 
 	return shader;
 }
